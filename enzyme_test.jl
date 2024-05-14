@@ -1,8 +1,4 @@
-# include("./ShallowWaters.jl/src/ShallowWaters.jl")
-# include("./not_checkpointed_integration")
-
 using Enzyme, Checkpointing
-
 using ShallowWaters#main
 
 Enzyme.API.maxtypeoffset!(3500)
@@ -706,7 +702,7 @@ function compute_derivative()
 
     # first computing the derivative with Checkpointing
 
-    S = run_setup(output=false,
+    S = model_setup(output=false,
     L_ratio=1,
     g=9.81,
     H=500,
@@ -730,7 +726,7 @@ function compute_derivative()
 
     # now computing the derivative without checkpointing
 
-    S2 = run_setup(output=false,
+    S2 = model_setup(output=false,
     L_ratio=1,
     g=9.81,
     H=500,
