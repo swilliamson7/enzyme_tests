@@ -1,0 +1,12 @@
+[deps]
+Checkpointing = "eb46d486-4f9c-4c3d-b445-a617f2a2f1ca"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+IJulia = "7073ff75-c697-5162-941a-fcdaad2a7d2a"
+Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
+Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
+NetCDF = "30363a11-5582-574a-97bb-aa9a979735b9"
+Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
+Pluto = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+ShallowWaters = "56019723-2d87-4a65-81ff-59d5d8913e3c"
