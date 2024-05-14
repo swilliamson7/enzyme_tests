@@ -760,7 +760,7 @@ end
 
 function finite_differences()
 
-    S = run_setup(output=false,
+    S = model_setup(output=false,
     L_ratio=1,
     g=9.81,
     H=500,
@@ -786,7 +786,7 @@ function finite_differences()
 
     steps = [10, 1, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-10]
 
-    S_outer = run_setup(output=false,
+    S_outer = model_setup(output=false,
     L_ratio=1,
     g=9.81,
     H=500,
@@ -806,7 +806,7 @@ function finite_differences()
 
     for s in  steps
 
-        S_inner = run_setup(output=false,
+        S_inner = model_setup(output=false,
         L_ratio=1,
         g=9.81,
         H=500,
