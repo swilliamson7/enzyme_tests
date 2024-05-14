@@ -341,7 +341,7 @@ function loop(S,scheme)
     # S.parameters.J = sum(temp.v.^2)
     # S.parameters.J = (sum(temp.u.^2) + sum(temp.v.^2)) / (S.grid.nx * S.grid.ny)
 
-    S.parameters.J = S.Prog.η[25,25]
+    S.parameters.J = temp.η[25,25]
 
     return nothing
 
@@ -686,13 +686,12 @@ function not_loop(S,scheme)
 
     temp = ShallowWaters.PrognosticVars{Float32}(ShallowWaters.remove_halo(S.Prog.u,S.Prog.v,S.Prog.η,S.Prog.sst,S)...)
 
-
     # S.parameters.J = temp.v[24,24]
 
     # S.parameters.J = sum(temp.v.^2)
     # S.parameters.J = (sum(temp.u.^2) + sum(temp.v.^2)) / (S.grid.nx * S.grid.ny)
 
-    S.parameters.J = S.Prog.η[25,25]
+    S.parameters.J = temp.η[25,25]
 
     return nothing
 
@@ -712,12 +711,12 @@ function compute_derivative()
     topography="flat",
     bc="nonperiodic",
     α=2,
-    nx=20,
+    nx=128,
     Ndays = 1
     )
 
     dS = Enzyme.make_zero(S)
-    dS.parameters.J = 1.0
+    dS.Prog.η[25,25] = 1.0
 
     snaps = Int(floor(sqrt(S.grid.nt)))
     revolve = Revolve{ShallowWaters.ModelSetup}(S.grid.nt, snaps; verbose=1, gc=true, write_checkpoints=false)
@@ -736,12 +735,12 @@ function compute_derivative()
     topography="flat",
     bc="nonperiodic",
     α=2,
-    nx=20,
+    nx=128,
     Ndays = 1
     )
 
     dS2 = Enzyme.make_zero(S2)
-    dS2.parameters.J = 1.0
+    dS2.Prog.η[25,25] = 1.0
 
     snaps2 = Int(floor(sqrt(S2.grid.nt)))
     revolve2 = Revolve{ShallowWaters.ModelSetup}(S2.grid.nt, snaps2; verbose=1, gc=true, write_checkpoints=false)
@@ -771,18 +770,19 @@ function finite_differences()
     bc="nonperiodic",
     α=2,
     nx=128,
-    Ndays = 2
+    Ndays = 1
     )
 
     dS = Enzyme.make_zero(S)
-    dS.parameters.J = 1.0
+    dS.Prog.η[25,25] = 1.0
 
     snaps = Int(floor(sqrt(S.grid.nt)))
     revolve = Revolve{ShallowWaters.ModelSetup}(S.grid.nt, snaps; verbose=1, gc=true, write_checkpoints=false)
 
     @time autodiff(Enzyme.ReverseWithPrimal, checkpointed_integration, Duplicated(S, dS), Const(revolve))
 
-    enzyme_calculated_derivative2 = dS2.Prog.u[25,25]
+    temp = ShallowWaters.PrognosticVars{Float32}(ShallowWaters.remove_halo(S.Prog.u,S.Prog.v,S.Prog.η,S.Prog.sst,S)...)
+    enzyme_deriv = temp.u[25,25]
 
     steps = [10, 1, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-10]
 
@@ -797,7 +797,7 @@ function finite_differences()
     bc="nonperiodic",
     α=2,
     nx=128,
-    Ndays = 2
+    Ndays = 1
     )
 
     Pouter = ShallowWaters.time_integration(S_outer)
@@ -817,7 +817,7 @@ function finite_differences()
         bc="nonperiodic",
         α=2,
         nx=128,
-        Ndays = 2
+        Ndays = 1
         )
 
         S_inner.Prog.u[25, 25] += s
