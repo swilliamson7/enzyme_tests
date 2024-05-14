@@ -779,10 +779,9 @@ function finite_differences()
     snaps = Int(floor(sqrt(S.grid.nt)))
     revolve = Revolve{ShallowWaters.ModelSetup}(S.grid.nt, snaps; verbose=1, gc=true, write_checkpoints=false)
 
-    @time autodiff(Enzyme.ReverseWithPrimal, checkpointed_integration, Duplicated(S, dS), Const(revolve))
+    @time autodiff(Enzyme.ReverseWithPrimal, not_checkpointed_integration, Duplicated(S, dS), Const(revolve))
 
-    temp = ShallowWaters.PrognosticVars{Float32}(ShallowWaters.remove_halo(S.Prog.u,S.Prog.v,S.Prog.η,S.Prog.sst,S)...)
-    enzyme_deriv = temp.u[25,25]
+    enzyme_deriv = dS.u[25,25]
 
     steps = [10, 1, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-10]
 
