@@ -443,7 +443,7 @@ function min_not_loop(S)
                 ShallowWaters.PVadvection!(Diag,S)
 
                 # adding the terms
-                ShallowWaters.momentum_u!(Diag,S,t)
+                # ShallowWaters.momentum_u!(Diag,S,t)
                 ShallowWaters.momentum_v!(Diag,S,t)
 
                 @unpack U,V,dUdx,dVdy = Diag.VolumeFluxes
@@ -481,8 +481,8 @@ function min_not_loop(S)
 
     # end
 
-    temp = ShallowWaters.PrognosticVars{Float32}(ShallowWaters.remove_halo(S.Prog.u,S.Prog.v,S.Prog.η,S.Prog.sst,S)...)
-    return temp.η[25,25]
+    return S.Prog.η[25,25]
+
 end
 
 function compute_derivative()
@@ -526,7 +526,7 @@ function finite_differences()
     bc="nonperiodic",
     α=2,
     nx=50,
-    Ndays = 10
+    Ndays = 50
     )
 
     dS = Enzyme.make_zero(S)
@@ -549,7 +549,7 @@ function finite_differences()
     bc="nonperiodic",
     α=2,
     nx=50,
-    Ndays = 10
+    Ndays = 50
     )
 
     Jouter = min_not_checkpointed_integration(S_outer)
@@ -569,7 +569,7 @@ function finite_differences()
         bc="nonperiodic",
         α=2,
         nx=50,
-        Ndays = 10
+        Ndays = 50
         )
 
         S_inner.Prog.u[25, 25] += s
