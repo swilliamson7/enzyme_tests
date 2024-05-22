@@ -382,9 +382,6 @@ function min_not_checkpointed_integration(S)
     vrhs = convert(Diag.PrognosticVarsRHS.v,v)
     ηrhs = convert(Diag.PrognosticVarsRHS.η,η)
 
-    ShallowWaters.advection_coriolis!(urhs,vrhs,ηrhs,Diag,S)
-    ShallowWaters.PVadvection!(Diag,S)
-
     # propagate initial conditions
     copyto!(u0,u)
     copyto!(v0,v)
@@ -431,10 +428,7 @@ function min_not_loop(S)
         copyto!(η1,η)
 
         for rki = 1:RKo
-            
-            if rki > 1
-                ShallowWaters.ghost_points!(u1,v1,η1,S)
-            end
+
 
                 # type conversion for mixed precision
                 u1rhs = convert(Diag.PrognosticVarsRHS.u,u1)
@@ -452,15 +446,7 @@ function min_not_loop(S)
                     ShallowWaters.advection_coriolis!(u1rhs,v1rhs,η1rhs,Diag,S)    # PV and non-linear Bernoulli terms
                 end
                 ShallowWaters.PVadvection!(Diag,S)                 # advect the PV with U,V
-                
-                # Bernoulli potential - recalculate for new η, KEu,KEv are only updated in advection_coriolis
-                @unpack p,KEu,KEv,dpdx,dpdy = Diag.Bernoulli
-                @unpack g,scale,scale_inv = S.constants
-                g_scale = g*scale
-                ShallowWaters.bernoulli!(p,KEu,KEv,η,g_scale,ep,scale_inv)
-                ShallowWaters.∂x!(dpdx,p)
-                ShallowWaters.∂y!(dpdy,p)
-            
+
                 # adding the terms
                 ShallowWaters.momentum_u!(Diag,S,t)
                 ShallowWaters.momentum_v!(Diag,S,t)
@@ -476,10 +462,8 @@ function min_not_loop(S)
                 ShallowWaters.axb!(u0,RKaΔt[rki],du)          #u0 .+= RKa[rki]*Δt*du
                 ShallowWaters.axb!(v0,RKaΔt[rki],dv)          #v0 .+= RKa[rki]*Δt*dv
                 ShallowWaters.axb!(η0,RKaΔt[rki],dη)          #η0 .+= RKa[rki]*Δt*dη
-
+        
         end
-
-
         # Copy back from substeps
         copyto!(u,u0)
         copyto!(v,v0)
