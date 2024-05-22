@@ -400,7 +400,7 @@ end
 
 function min_not_loop(S)
 
-    for S.parameters.i = 1:S.grid.nt
+    # for S.parameters.i = 1:S.grid.nt
 
         Diag = S.Diag
         Prog = S.Prog
@@ -431,6 +431,7 @@ function min_not_loop(S)
         copyto!(η1,η)
 
         for rki = 1:RKo
+            
             if rki > 1
                 ShallowWaters.ghost_points!(u1,v1,η1,S)
             end
@@ -440,29 +441,29 @@ function min_not_loop(S)
                 v1rhs = convert(Diag.PrognosticVarsRHS.v,v1)
                 η1rhs = convert(Diag.PrognosticVarsRHS.η,η1)
 
-                ShallowWaters.rhs!(u1rhs,v1rhs,η1rhs,Diag,S,t)          # momentum only
+                # ShallowWaters.rhs!(u1rhs,v1rhs,η1rhs,Diag,S,t)          # momentum only
                 # rhs_nonlinear!(u,v,η,Diag,S,t)
-                # @unpack h,h_u,h_v,U,V = Diag.VolumeFluxes
-                # @unpack H = S.forcing
-                # @unpack ep = S.grid
+                @unpack h,h_u,h_v,U,V = Diag.VolumeFluxes
+                @unpack H = S.forcing
+                @unpack ep = S.grid
 
-                # ShallowWaters.UVfluxes!(u1rhs,v1rhs,η1rhs,Diag,S)              # U,V needed for PV advection and in the continuity equation
-                # if S.grid.nstep_advcor == 0              # evaluate every RK substep
-                #     ShallowWaters.advection_coriolis!(u1rhs,v1rhs,η1rhs,Diag,S)    # PV and non-linear Bernoulli terms
-                # end
-                # ShallowWaters.PVadvection!(Diag,S)                 # advect the PV with U,V
+                ShallowWaters.UVfluxes!(u1rhs,v1rhs,η1rhs,Diag,S)              # U,V needed for PV advection and in the continuity equation
+                if S.grid.nstep_advcor == 0              # evaluate every RK substep
+                    ShallowWaters.advection_coriolis!(u1rhs,v1rhs,η1rhs,Diag,S)    # PV and non-linear Bernoulli terms
+                end
+                ShallowWaters.PVadvection!(Diag,S)                 # advect the PV with U,V
                 
-                # # Bernoulli potential - recalculate for new η, KEu,KEv are only updated in advection_coriolis
-                # @unpack p,KEu,KEv,dpdx,dpdy = Diag.Bernoulli
-                # @unpack g,scale,scale_inv = S.constants
-                # g_scale = g*scale
-                # ShallowWaters.bernoulli!(p,KEu,KEv,η,g_scale,ep,scale_inv)
-                # ShallowWaters.∂x!(dpdx,p)
-                # ShallowWaters.∂y!(dpdy,p)
+                # Bernoulli potential - recalculate for new η, KEu,KEv are only updated in advection_coriolis
+                @unpack p,KEu,KEv,dpdx,dpdy = Diag.Bernoulli
+                @unpack g,scale,scale_inv = S.constants
+                g_scale = g*scale
+                ShallowWaters.bernoulli!(p,KEu,KEv,η,g_scale,ep,scale_inv)
+                ShallowWaters.∂x!(dpdx,p)
+                ShallowWaters.∂y!(dpdy,p)
             
-                # # adding the terms
-                # ShallowWaters.momentum_u!(Diag,S,t)
-                # ShallowWaters.momentum_v!(Diag,S,t)
+                # adding the terms
+                ShallowWaters.momentum_u!(Diag,S,t)
+                ShallowWaters.momentum_v!(Diag,S,t)
 
                 ShallowWaters.continuity!(u1rhs,v1rhs,η1rhs,Diag,S,t)   # continuity equation
 
@@ -476,7 +477,7 @@ function min_not_loop(S)
                 ShallowWaters.axb!(v0,RKaΔt[rki],dv)          #v0 .+= RKa[rki]*Δt*dv
                 ShallowWaters.axb!(η0,RKaΔt[rki],dη)          #η0 .+= RKa[rki]*Δt*dη
 
-            end
+        end
 
 
         # Copy back from substeps
@@ -484,7 +485,7 @@ function min_not_loop(S)
         copyto!(v,v0)
         copyto!(η,η0)
 
-    end
+    # end
 
     temp = ShallowWaters.PrognosticVars{Float32}(ShallowWaters.remove_halo(S.Prog.u,S.Prog.v,S.Prog.η,S.Prog.sst,S)...)
     return temp.η[25,25]
@@ -537,9 +538,6 @@ function finite_differences()
     dS = Enzyme.make_zero(S)
     dS.Prog.η[25,25] = 1.0
 
-    snaps = Int(floor(sqrt(S.grid.nt)))
-    revolve = Revolve{ShallowWaters.ModelSetup}(S.grid.nt, snaps; verbose=1, gc=true, write_checkpoints=false)
-
     @time autodiff(Enzyme.ReverseWithPrimal, min_not_checkpointed_integration, Duplicated(S, dS))
 
     enzyme_deriv = dS.Prog.u[25,25]
@@ -560,12 +558,11 @@ function finite_differences()
     Ndays = 10
     )
 
-
     Jouter = min_not_checkpointed_integration(S_outer)
 
     diffs2 = []
 
-    for s in  steps
+    for s in steps
 
         S_inner = model_setup(output=false,
         L_ratio=1,
