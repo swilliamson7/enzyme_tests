@@ -429,7 +429,6 @@ function min_not_loop(S)
 
         for rki = 1:RKo
 
-
                 # type conversion for mixed precision
                 u1rhs = convert(Diag.PrognosticVarsRHS.u,u1)
                 v1rhs = convert(Diag.PrognosticVarsRHS.v,v1)
@@ -451,7 +450,22 @@ function min_not_loop(S)
                 ShallowWaters.momentum_u!(Diag,S,t)
                 ShallowWaters.momentum_v!(Diag,S,t)
 
-                ShallowWaters.continuity!(u1rhs,v1rhs,η1rhs,Diag,S,t)   # continuity equation
+                @unpack U,V,dUdx,dVdy = Diag.VolumeFluxes
+                @unpack nstep_advcor = S.grid
+                @unpack time_scheme,surface_relax,surface_forcing = S.parameters
+
+                # # divergence of mass flux
+                ShallowWaters.∂x!(dUdx,U)
+                ShallowWaters.∂y!(dVdy,V)
+
+                @unpack dη = Diag.Tendencies
+                m,n = size(dη) .- (2,2)     # cut off halo
+
+                @inbounds for j ∈ 1:n
+                    for i ∈ 1:m
+                        dη[i+1,j+1] = -(Float32(dUdx[i,j+1]) + Float32(dVdy[i+1,j]))
+                    end
+                end
 
                 if rki < RKo
                     ShallowWaters.caxb!(u1,u,RKbΔt[rki],du)   #u1 .= u .+ RKb[rki]*Δt*du
