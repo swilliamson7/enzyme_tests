@@ -421,8 +421,6 @@ function min_not_loop(S)
         t = S.t
         i = S.parameters.i
 
-        # ghost point copy for boundary conditions
-        ShallowWaters.ghost_points!(u,v,η,S)
         copyto!(u1,u)
         copyto!(v1,v)
         copyto!(η1,η)
@@ -440,11 +438,9 @@ function min_not_loop(S)
                 @unpack H = S.forcing
                 @unpack ep = S.grid
 
-                ShallowWaters.UVfluxes!(u1rhs,v1rhs,η1rhs,Diag,S)              # U,V needed for PV advection and in the continuity equation
-                if S.grid.nstep_advcor == 0              # evaluate every RK substep
-                    ShallowWaters.advection_coriolis!(u1rhs,v1rhs,η1rhs,Diag,S)    # PV and non-linear Bernoulli terms
-                end
-                ShallowWaters.PVadvection!(Diag,S)                 # advect the PV with U,V
+                ShallowWaters.UVfluxes!(u1rhs,v1rhs,η1rhs,Diag,S)
+                ShallowWaters.advection_coriolis!(u1rhs,v1rhs,η1rhs,Diag,S)
+                ShallowWaters.PVadvection!(Diag,S)
 
                 # adding the terms
                 ShallowWaters.momentum_u!(Diag,S,t)
