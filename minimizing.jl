@@ -187,36 +187,44 @@ function min_not_loop(S)
                     end
                 end
 
-                @unpack U,V,dUdx,dVdy = Diag.VolumeFluxes
-                @unpack nstep_advcor = S.grid
-                @unpack time_scheme,surface_relax,surface_forcing = S.parameters
+                m,n = size(Diag.VolumeFluxes.dVdy)
+                @inbounds for j ∈ 1:n, i ∈ 1:m
+                        Diag.VolumeFluxes.dVdy[i,j] = Diag.VolumeFluxes.V[i,j+1] -
+                        Diag.VolumeFluxes.V[i,j]
+                end
 
-                # divergence of mass flux
-                ShallowWaters.∂x!(dUdx,U)
-                ShallowWaters.∂y!(dVdy,V)
-
-                @unpack dη = Diag.Tendencies
-                m,n = size(dη) .- (2,2)     # cut off halo
-
+                m,n = size(Diag.Tendencies.dη) .- (2,2)     # cut off halo
                 @inbounds for j ∈ 1:n
                     for i ∈ 1:m
-                        dη[i+1,j+1] = -(Float32(dUdx[i,j+1]) + Float32(dVdy[i+1,j]))
+                        dη[i+1,j+1] = -(Float32(Diag.VolumeFluxes.dUdx[i,j+1]) +
+                        Float32(Diag.VolumeFluxes.dVdy[i+1,j]))
                     end
                 end
 
                 if rki < RKo
-                    ShallowWaters.caxb!(u1,u,RKbΔt[rki],du)   #u1 .= u .+ RKb[rki]*Δt*du
-                    ShallowWaters.caxb!(v1,v,RKbΔt[rki],dv)   #v1 .= v .+ RKb[rki]*Δt*dv
-                    ShallowWaters.caxb!(η1,η,RKbΔt[rki],dη)   #η1 .= η .+ RKb[rki]*Δt*dη
+                    m,n = size(v1)
+                    @inbounds for j ∈ 1:n
+                        for i ∈ 1:m
+                           v1[i,j] = v[i,j] + RKbΔt[rki]*dv[i,j]
+                        end
+                    end
+
+                    m,n = size(η1)
+                    @inbounds for j ∈ 1:n
+                        for i ∈ 1:m
+                           η1[i,j] = η[i,j] + RKbΔt[rki]*dη[i,j]
+                        end
+                    end
                 end
 
-                ShallowWaters.axb!(u0,RKaΔt[rki],du)          #u0 .+= RKa[rki]*Δt*du
-                ShallowWaters.axb!(v0,RKaΔt[rki],dv)          #v0 .+= RKa[rki]*Δt*dv
-                ShallowWaters.axb!(η0,RKaΔt[rki],dη)          #η0 .+= RKa[rki]*Δt*dη
-        
+                m,n = size(η0)
+                @inbounds for j ∈ 1:n
+                    for i ∈ 1:m
+                       η0[i,j] += RKaΔt[rki]*dη[i,j]
+                    end
+                end
         end
-        # Copy back from substeps
-        copyto!(u,u0)
+
         copyto!(v,v0)
         copyto!(η,η0)
 
