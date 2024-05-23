@@ -3,7 +3,7 @@ using ShallowWaters#main
 
 Enzyme.API.maxtypeoffset!(500)
 Enzyme.API.maxtypedepth!(3)
-Enzyme.API.looseTypeAnalysis!(false)
+Enzyme.API.looseTypeAnalysis!(true)
 Enzyme.API.runtimeActivity!(true)
 
 using Parameters
