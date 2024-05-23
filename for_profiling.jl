@@ -1,7 +1,10 @@
 using Enzyme, Checkpointing
 using ShallowWaters#main
+using PProf
 
-Enzyme.API.maxtypeoffset!(3500)
+Enzyme.API.maxtypeoffset!(500)
+Enzyme.API.maxtypedepth!(3)
+Enzyme.API.looseTypeAnalysis!(true)
 Enzyme.API.runtimeActivity!(true)
 
 using Parameters
@@ -54,7 +57,7 @@ function checkpointed_integration(S, scheme)
     # run integration loop with checkpointing
     loop(S, scheme)
 
-    return S.parameters.J
+    return nothing
 
 end
 
@@ -314,7 +317,6 @@ function loop(S,scheme)
 
     end
 
-    temp = ShallowWaters.PrognosticVars{Float32}(ShallowWaters.remove_halo(S.Prog.u,S.Prog.v,S.Prog.η,S.Prog.sst,S)...)
     S.parameters.J = S.Prog.η[25,25]
 
     return nothing
@@ -347,4 +349,4 @@ function compute_derivative()
 
 end
 
-compute_derivative()
+@profview compute_derivative()
