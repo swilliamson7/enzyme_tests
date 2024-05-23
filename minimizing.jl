@@ -2,7 +2,6 @@ using Enzyme, Checkpointing
 using ShallowWaters#main
 
 Enzyme.API.maxtypeoffset!(500)
-# Enzyme.API.maxtypedepth!(3)
 Enzyme.API.runtimeActivity!(true)
 
 using Parameters
@@ -29,31 +28,6 @@ function min_not_checkpointed_integration(S)
 
     @unpack nt,dtint = S.grid
     @unpack nstep_advcor,nstep_diff,nadvstep,nadvstep_half = S.grid
-
-    # calculate layer thicknesses for initial conditions
-    # @inbounds for i in eachindex(η)
-    #     Diag.VolumeFluxes.h[i] = η[i] + S.forcing.H[i]
-    # end
-    # m, n = size(Diag.VolumeFluxes.h_u)
-    # @inbounds for j ∈ 1:n
-    #     for i ∈ 1:m
-    #         Diag.VolumeFluxes.h_u[i,j] = Float32(0.5)*
-    #             (Diag.VolumeFluxes.h[i+1,j] + Diag.VolumeFluxes.h[i,j])
-    #     end
-    # end
-    # m,n = size(Diag.VolumeFluxes.h_v)
-    # @inbounds for j ∈ 1:n
-    #     for i ∈ 1:m
-    #         Diag.VolumeFluxes.h_v[i,j] = Float32(0.5)*
-    #             (Diag.VolumeFluxes.h[i,j+1] + Diag.VolumeFluxes.h[i,j])
-    #     end
-    # end
-    # m,n = size(Diag.Vorticity.h_q)
-    # @inbounds for j in 1:n, i in 1:m
-    #     Diag.Vorticity.h_q[i,j] = Float32(0.25)*(Diag.VolumeFluxes.h[i,j] + 
-    #             Diag.VolumeFluxes.h[i+1,j]) + 
-    #             Float32(0.25)*(Diag.VolumeFluxes.h[i,j+1] + Diag.VolumeFluxes.h[i+1,j+1])
-    # end
 
     # calculate PV terms for initial conditions
     urhs = convert(Diag.PrognosticVarsRHS.u,u)
@@ -113,20 +87,111 @@ function min_not_loop(S)
                 @unpack h,h_u,h_v,U,V = Diag.VolumeFluxes
                 @unpack H = S.forcing
                 @unpack ep = S.grid
+                @unpack scale_inv = S.constants
 
-                ShallowWaters.UVfluxes!(u1rhs,v1rhs,η1rhs,Diag,S)
-                ShallowWaters.advection_coriolis!(u1rhs,v1rhs,η1rhs,Diag,S)
-                ShallowWaters.PVadvection!(Diag,S)
+                @inbounds for i in eachindex(η)
+                    Diag.VolumeFluxes.h[i] = η1rhs[i] + S.forcing.H[i]
+                end
 
-                # adding the terms
-                # ShallowWaters.momentum_u!(Diag,S,t)
-                ShallowWaters.momentum_v!(Diag,S,t)
+                m, n = size(Diag.VolumeFluxes.h_u)
+                @inbounds for j ∈ 1:n
+                    for i ∈ 1:m
+                        Diag.VolumeFluxes.h_u[i,j] = Float32(0.5)*
+                            (Diag.VolumeFluxes.h[i+1,j] + Diag.VolumeFluxes.h[i,j])
+                    end
+                end
+
+                m,n = size(Diag.VolumeFluxes.h_v)
+                @inbounds for j ∈ 1:n
+                    for i ∈ 1:m
+                        Diag.VolumeFluxes.h_v[i,j] = Float32(0.5)*
+                            (Diag.VolumeFluxes.h[i,j+1] + Diag.VolumeFluxes.h[i,j])
+                    end
+                end
+
+                m,n = size(Diag.VolumeFluxes.U)
+                @inbounds for j ∈ 1:n
+                    for i ∈ 1:m
+                        Diag.VolumeFluxes.U[i,j] = u1rhs[1+S.grid.ep+i,1+j]*
+                        Diag.VolumeFluxes.h_u[i,j]*S.constants.scale_inv
+                    end
+                end
+
+                m,n = size(Diag.VolumeFluxes.V)
+                @inbounds for j ∈ 1:n
+                    for i ∈ 1:m
+                        Diag.VolumeFluxes.V[i,j] = v1rhs[i+1,j+1]*
+                        Diag.VolumeFluxes.h_v[i,j]*S.constants.scale_inv
+                    end
+                end
+
+                @unpack h = Diag.VolumeFluxes
+                @unpack h_q,dvdx,dudy = Diag.Vorticity
+                @unpack u²,v²,KEu,KEv = Diag.Bernoulli
+                @unpack ep,f_q = S.grid
+
+                # ShallowWaters.Ixy!(h_q,h)
+                m,n = size(h_q)
+                @inbounds for j in 1:n, i in 1:m
+                    h_q[i,j] = Float32(0.25)*(h[i,j] + h[i+1,j]) + 
+                            Float32(0.25)*(h[i,j+1] + h[i+1,j+1])
+                end
+
+                m,n = size(v²)
+                @inbounds for i in eachindex(v)
+                    v²[i] = v1rhs[i]^2
+                end
+
+                m,n = size(Diag.Vorticity.q)
+                @inbounds for j ∈ 1:n
+                    for i ∈ 1:m
+                        Diag.Vorticity.q[i,j] = (S.grid.f_q[i,j]
+                        + Diag.Vorticity.dvdx[i+1,j+1]
+                        - Diag.Vorticity.dudy[i+1+S.grid.ep,j+1]) / Diag.Vorticity.h_q[i,j]
+                    end
+                end
+
+                m,n = size(Diag.ArakawaHsu.qα)
+                one_twelve = Float32(1/12)
+                @inbounds for j ∈ 1:n
+                    for i ∈ 1:m
+                        Diag.ArakawaHsu.qα[i,j] = one_twelve*(
+                            Diag.Vorticity.q[i,j]
+                            + Diag.Vorticity.q[i,j+1]
+                            + Diag.Vorticity.q[i+1,j+1]
+                        )
+                    end
+                end
+
+                m,n = size(Diag.Vorticity.qhv)
+                @inbounds for j ∈ 1:n
+                    for i ∈ 1:m
+                        Diag.Vorticity.qhv[i,j] = Diag.ArakawaHsu.qα[1-Diag.Vorticity.ep+i,j]*
+                        Diag.VolumeFluxes.V[2-Diag.Vorticity.ep+i,j+1]
+                    end
+                end
+                m,n = size(Diag.Vorticity.qhu)
+                @inbounds for j ∈ 1:n
+                    for i ∈ 1:m
+                        Diag.Vorticity.qhu[i,j] = Diag.ArakawaHsu.qα[i,j]*
+                        Diag.VolumeFluxes.U[i,j+1]
+                    end
+                end
+
+                m,n = size(Diag.Tendencies.dv) .- (2*S.grid.halo,2*S.grid.halo)
+                @inbounds for j ∈ 1:n
+                    for i ∈ 1:m
+                         Diag.Tendencies.dv[i+2,j+2] = -(Float32(Diag.Vorticity.qhu[i,j]) +
+                         Float32(Diag.Bernoulli.dpdy[i+1,j+1])) +
+                         Float32(S.forcing.Fy[i,j])
+                    end
+                end
 
                 @unpack U,V,dUdx,dVdy = Diag.VolumeFluxes
                 @unpack nstep_advcor = S.grid
                 @unpack time_scheme,surface_relax,surface_forcing = S.parameters
 
-                # # divergence of mass flux
+                # divergence of mass flux
                 ShallowWaters.∂x!(dUdx,U)
                 ShallowWaters.∂y!(dVdy,V)
 
