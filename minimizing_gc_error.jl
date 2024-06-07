@@ -339,9 +339,7 @@ S2 = model_setup(output=false,
     bc="nonperiodic",
     α=2,
     nx=128,
-    Ndays = 30,
-    initial_cond="ncfile",
-    initpath="./MPE24/ShallowWaters_tutorial/initial_conditions/"
+    Ndays = 10
 )
 
 dS2 = Enzyme.make_zero(S2)
@@ -358,66 +356,3 @@ revolve = Revolve{ShallowWaters.ModelSetup}(S2.grid.nt, snaps;
     Duplicated(S2, dS2), 
     Const(revolve)
 )
-
-derivs2 = ShallowWaters.PrognosticVars{Float32}(ShallowWaters.remove_halo(dS2.Prog.u,
-    dS2.Prog.v,
-    dS2.Prog.η,
-    dS2.Prog.sst,
-    dS2)...)
-
-enzyme_deriv = dS2.constants.g
-
-steps = [40, 30, 20, 10, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
-
-S_outer = model_setup(output=false,
-    L_ratio=1,
-    g=9.81,
-    H=500,
-    wind_forcing_x="double_gyre",
-    Lx=3840e3,
-    seasonal_wind_x=false,
-    topography="flat",
-    bc="nonperiodic",
-    α=2,
-    nx=128,
-    Ndays = 30,
-    initial_cond="ncfile",
-    initpath="./MPE24/ShallowWaters_tutorial/initial_conditions/"
-)
-
-snaps = Int(floor(sqrt(S_outer.grid.nt)))
-revolve = Revolve{ShallowWaters.ModelSetup}(S_outer.grid.nt, snaps; 
-    verbose=1, 
-    gc=true, 
-    write_checkpoints=false
-)
-
-J_outer = checkpointed_integration(S_outer, revolve)
-
-diffs = []
-
-for s in  steps
-
-    S_inner = model_setup(output=false,
-        L_ratio=1,
-        g=9.81+s,
-        H=500,
-        wind_forcing_x="double_gyre",
-        Lx=3840e3,
-        seasonal_wind_x=false,
-        topography="flat",
-        bc="nonperiodic",
-        α=2,
-        nx=128,
-        Ndays = 30,
-        initial_cond="ncfile",
-        initpath="./MPE24/ShallowWaters_tutorial/initial_conditions/"
-    )
-
-    # S_inner.constants.g += s
-
-    J_inner = checkpointed_integration(S_inner, revolve)
-
-    push!(diffs, (J_inner - J_outer) / s)
-
-end
